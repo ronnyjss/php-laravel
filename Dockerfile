@@ -3,15 +3,17 @@ FROM debian:12-slim
 ENV DEBIAN_FRONTEND noninteractive
 ENV APACHE_VERSION='2.4.57'
 ENV CURL_VERSION='8.2.1'
-ENV OPENSSL_VERSION='3.0.10'
+ENV OPENSSL_VERSION='3.0.9'
 ENV OPENSSH_VERSION='9.4p1'
 ENV PHP_VERSION='8.2.8'
 ENV WKHTMLTOPDF_VERSION='0.12.6.1-3'
 
 COPY ./start.sh /scripts/start.sh
 
-RUN chmod +x /scripts/start.sh && \
-    apt update && \
+# Adicionando permissão de execução ao script de inicialização
+RUN chmod +x /scripts/start.sh
+
+RUN apt update && \
     apt install -y --no-install-recommends \
         apt-utils \
         ca-certificates \
@@ -32,38 +34,38 @@ RUN chmod +x /scripts/start.sh && \
         wget \
     " && \
     set -x && \
-    apt-get install -y --no-install-recommends $buildDeps && \
+    apt-get install -y --no-install-recommends $buildDeps
 
     # Wkhtmltopdf
-    wget -P /tmp https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTMLTOPDF_VERSION}/wkhtmltox_${WKHTMLTOPDF_VERSION}.bookworm_amd64.deb && \
-    apt install -y --no-install-recommends -f /tmp/wkhtmltox_${WKHTMLTOPDF_VERSION}.bookworm_amd64.deb && \
+RUN wget -P /tmp https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTMLTOPDF_VERSION}/wkhtmltox_${WKHTMLTOPDF_VERSION}.bookworm_amd64.deb && \
+    apt install -y --no-install-recommends -f /tmp/wkhtmltox_${WKHTMLTOPDF_VERSION}.bookworm_amd64.deb
 
     # OpenSSL
-    wget -P /tmp https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz && \
-    tar xf /tmp/openssl-${OPENSSL_VERSION}.tar.gz -C /tmp  &&\
+RUN wget -P /tmp https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz && \
+    tar xf /tmp/openssl-${OPENSSL_VERSION}.tar.gz -C /tmp  && \
     cd /tmp/openssl-${OPENSSL_VERSION} && \
     ./config shared && \
     make -j$(nproc) && \
-    make install_sw && \
+    make install_sw
 
     # OpenSSH
-    wget -P /tmp https://openbsd.c3sl.ufpr.br/pub/OpenBSD/OpenSSH/portable/openssh-${OPENSSH_VERSION}.tar.gz && \
+RUN wget -P /tmp https://openbsd.c3sl.ufpr.br/pub/OpenBSD/OpenSSH/portable/openssh-${OPENSSH_VERSION}.tar.gz && \
     tar xf /tmp/openssh-${OPENSSH_VERSION}.tar.gz -C /tmp && \
     cd /tmp/openssh-${OPENSSH_VERSION} && \
     ./configure && \
     make -j$(nproc) && \
-    make install && \
+    make install
 
     # Curl
-    wget -P /tmp https://curl.se/download/curl-${CURL_VERSION}.tar.gz && \
+RUN wget -P /tmp https://curl.se/download/curl-${CURL_VERSION}.tar.gz && \
     tar xf /tmp/curl-${CURL_VERSION}.tar.gz -C /tmp && \
     cd /tmp/curl-${CURL_VERSION} && \
     ./configure --with-openssl && \
     make -j$(nproc) && \
-    make install && \
+    make install
 
     # Apache
-    mkdir -p /var/www/html && \
+RUN mkdir -p /var/www/html && \
     wget -P /tmp http://archive.apache.org/dist/httpd/httpd-${APACHE_VERSION}.tar.gz && \
     tar xf /tmp/httpd-${APACHE_VERSION}.tar.gz -C /tmp && \
     cd /tmp/httpd-${APACHE_VERSION} && \
@@ -72,10 +74,10 @@ RUN chmod +x /scripts/start.sh && \
         --enable-so \
         --with-mpm=prefork && \
     make -j$(nproc) && \
-    make install && \
+    make install
 
     # PHP
-    wget -P /tmp https://www.php.net/distributions/php-${PHP_VERSION}.tar.gz && \
+RUN wget -P /tmp https://www.php.net/distributions/php-${PHP_VERSION}.tar.gz && \
     tar xf /tmp/php-${PHP_VERSION}.tar.gz -C /tmp && \
     ln -s /usr/include/x86_64-linux-gnu/curl /usr/include/curl && \
     mkdir -p /usr/local/etc/php/conf.d && \
@@ -94,32 +96,28 @@ RUN chmod +x /scripts/start.sh && \
         --with-zlib \
         --with-apxs2=/usr/local/apache2/bin/apxs \
         --with-config-file-path=/usr/local/etc/php \
-		--with-config-file-scan-dir=/usr/local/etc/php/conf.d \
-        --enable-ftp \
-        --enable-zip && \
+		--with-config-file-scan-dir=/usr/local/etc/php/conf.d && \
     make -j$(nproc) && \
-    make install && \
+    make install
 
     # PHP Extensions
-    wget -P /tmp http://pear.php.net/go-pear.phar && \
+RUN wget -P /tmp http://pear.php.net/go-pear.phar && \
     php /tmp/go-pear.phar && \
     pecl channel-update pecl.php.net && \
-    pecl install oci8-3.3.0 && \
-    echo 'extension=oci8.so' >> /usr/local/etc/php/conf.d/oci8.ini && \
     pecl install xdebug && \
-    echo ';zend_extension=xdebug.so' >> /usr/local/etc/php/conf.d/xdebug.ini && \
+    echo ';zend_extension=xdebug.so' >> /usr/local/etc/php/conf.d/xdebug.ini
 
     # Pacotes que devem permanecer na imagem
-    apt-mark hold libapr1 libaprutil1 libldap-2.5-0 libonig5 libpcre3 libpng16-16 libxml2 libzip4 && \
+RUN apt-mark hold libapr1 libaprutil1 libldap-2.5-0 libonig5 libpcre3 libpng16-16 libxml2 libzip4
 
     # Limpeza
-    apt purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false -o APT::AutoRemove::SuggestsImportant=false $buildDeps && \
+RUN apt purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false -o APT::AutoRemove::SuggestsImportant=false $buildDeps && \
     apt clean && \
     rm -rf /tmp/* && \
-    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /var/lib/apt/lists/*
 
     # Corrigindo permissões
-    addgroup -gid 1000 --system laravel && \
+RUN addgroup -gid 1000 --system laravel && \
     adduser --system --disabled-password --gid 1000 -u 1000 laravel
 
 COPY ./conf/apache/httpd.conf /usr/local/apache2/conf/httpd.conf
